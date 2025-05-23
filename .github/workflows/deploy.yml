@@ -34,93 +34,44 @@ jobs:
           ls -la
           echo "=== Looking for HTML files ==="
           find . -name "*.html" -type f
-          echo "=== Checking if Login.html exists ==="
-          if [ -f "Login.html" ]; then
-            echo "✅ Login.html found"
-            echo "=== Current placeholders in file ==="
-            grep -n "FIREBASE.*PLACEHOLDER" Login.html || echo "No placeholders found"
-          else
-            echo "❌ Login.html not found"
-          fi
       
       - name: Replace Firebase configuration placeholders
         run: |
+          echo "=== Processing Firebase Configuration ==="
+          
           # Check if secrets are available (they won't show values for security)
-          echo "=== Checking secrets availability ==="
           if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
             echo "❌ FIREBASE_API_KEY secret is empty or not set"
           else
             echo "✅ FIREBASE_API_KEY secret is available"
           fi
           
-          if [ -z "${{ secrets.FIREBASE_AUTH_DOMAIN }}" ]; then
-            echo "❌ FIREBASE_AUTH_DOMAIN secret is empty or not set"
-          else
-            echo "✅ FIREBASE_AUTH_DOMAIN secret is available"
-          fi
-          
-          # Process the HTML file
-          if [ -f "Login.html" ]; then
-            echo "=== Processing Login.html ==="
-            
-            # Create a backup
-            cp Login.html Login.html.backup
-            
-            # Replace placeholders one by one with error checking
-            echo "Replacing FIREBASE_API_KEY_PLACEHOLDER..."
-            sed -i 's|FIREBASE_API_KEY_PLACEHOLDER|${{ secrets.FIREBASE_API_KEY }}|g' Login.html
-            if [ $? -eq 0 ]; then
-              echo "✅ FIREBASE_API_KEY replaced successfully"
-            else
-              echo "❌ Failed to replace FIREBASE_API_KEY"
-              exit 1
+          # Process all HTML files that contain Firebase placeholders
+          for file in *.html; do
+            if [ -f "$file" ]; then
+              echo "=== Checking $file for Firebase placeholders ==="
+              if grep -q "FIREBASE.*PLACEHOLDER" "$file"; then
+                echo "✅ Found Firebase placeholders in $file"
+                
+                # Replace placeholders
+                sed -i 's|FIREBASE_API_KEY_PLACEHOLDER|${{ secrets.FIREBASE_API_KEY }}|g' "$file"
+                sed -i 's|FIREBASE_AUTH_DOMAIN_PLACEHOLDER|${{ secrets.FIREBASE_AUTH_DOMAIN }}|g' "$file"
+                sed -i 's|FIREBASE_DATABASE_URL_PLACEHOLDER|${{ secrets.FIREBASE_DATABASE_URL }}|g' "$file"
+                sed -i 's|FIREBASE_PROJECT_ID_PLACEHOLDER|${{ secrets.FIREBASE_PROJECT_ID }}|g' "$file"
+                
+                # Verify replacements
+                if grep -q "FIREBASE.*PLACEHOLDER" "$file"; then
+                  echo "❌ Some placeholders were not replaced in $file:"
+                  grep -n "FIREBASE.*PLACEHOLDER" "$file"
+                  exit 1
+                else
+                  echo "✅ All placeholders replaced successfully in $file"
+                fi
+              else
+                echo "ℹ️ No Firebase placeholders found in $file (skipping)"
+              fi
             fi
-            
-            echo "Replacing FIREBASE_AUTH_DOMAIN_PLACEHOLDER..."
-            sed -i 's|FIREBASE_AUTH_DOMAIN_PLACEHOLDER|${{ secrets.FIREBASE_AUTH_DOMAIN }}|g' Login.html
-            if [ $? -eq 0 ]; then
-              echo "✅ FIREBASE_AUTH_DOMAIN replaced successfully"
-            else
-              echo "❌ Failed to replace FIREBASE_AUTH_DOMAIN"
-              exit 1
-            fi
-            
-            echo "Replacing FIREBASE_DATABASE_URL_PLACEHOLDER..."
-            sed -i 's|FIREBASE_DATABASE_URL_PLACEHOLDER|${{ secrets.FIREBASE_DATABASE_URL }}|g' Login.html
-            if [ $? -eq 0 ]; then
-              echo "✅ FIREBASE_DATABASE_URL replaced successfully"
-            else
-              echo "❌ Failed to replace FIREBASE_DATABASE_URL"
-              exit 1
-            fi
-            
-            echo "Replacing FIREBASE_PROJECT_ID_PLACEHOLDER..."
-            sed -i 's|FIREBASE_PROJECT_ID_PLACEHOLDER|${{ secrets.FIREBASE_PROJECT_ID }}|g' Login.html
-            if [ $? -eq 0 ]; then
-              echo "✅ FIREBASE_PROJECT_ID replaced successfully"
-            else
-              echo "❌ Failed to replace FIREBASE_PROJECT_ID"
-              exit 1
-            fi
-            
-            echo "=== Verification ==="
-            echo "Checking for any remaining placeholders..."
-            if grep -q "FIREBASE.*PLACEHOLDER" Login.html; then
-              echo "❌ Some placeholders were not replaced:"
-              grep -n "FIREBASE.*PLACEHOLDER" Login.html
-              exit 1
-            else
-              echo "✅ All placeholders have been replaced successfully"
-            fi
-            
-            # Show first few lines of Firebase config for verification (without showing secrets)
-            echo "=== Firebase config section ==="
-            grep -A 10 -B 2 "const firebaseConfig" Login.html | head -15
-            
-          else
-            echo "❌ Login.html file not found!"
-            exit 1
-          fi
+          done
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
