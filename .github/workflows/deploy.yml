@@ -21,11 +21,6 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
-    env:
-      FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-      FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
-      FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
-      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,62 +28,97 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
       
+      - name: Debug repository contents
+        run: |
+          echo "=== Repository Contents ==="
+          ls -la
+          echo "=== Looking for HTML files ==="
+          find . -name "*.html" -type f
+          echo "=== Checking if Login.html exists ==="
+          if [ -f "Login.html" ]; then
+            echo "✅ Login.html found"
+            echo "=== Current placeholders in file ==="
+            grep -n "FIREBASE.*PLACEHOLDER" Login.html || echo "No placeholders found"
+          else
+            echo "❌ Login.html not found"
+          fi
+      
       - name: Replace Firebase configuration placeholders
         run: |
-          echo "=== Processing Firebase Configuration ==="
-          
-          # Check if environment variables are set
-          if [ -z "$FIREBASE_API_KEY" ]; then
-            echo "❌ FIREBASE_API_KEY environment variable is not set"
-            exit 1
+          # Check if secrets are available (they won't show values for security)
+          echo "=== Checking secrets availability ==="
+          if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
+            echo "❌ FIREBASE_API_KEY secret is empty or not set"
+          else
+            echo "✅ FIREBASE_API_KEY secret is available"
           fi
           
-          if [ -z "$FIREBASE_AUTH_DOMAIN" ]; then
-            echo "❌ FIREBASE_AUTH_DOMAIN environment variable is not set"
-            exit 1
+          if [ -z "${{ secrets.FIREBASE_AUTH_DOMAIN }}" ]; then
+            echo "❌ FIREBASE_AUTH_DOMAIN secret is empty or not set"
+          else
+            echo "✅ FIREBASE_AUTH_DOMAIN secret is available"
           fi
-          
-          if [ -z "$FIREBASE_DATABASE_URL" ]; then
-            echo "❌ FIREBASE_DATABASE_URL environment variable is not set"
-            exit 1
-          fi
-          
-          if [ -z "$FIREBASE_PROJECT_ID" ]; then
-            echo "❌ FIREBASE_PROJECT_ID environment variable is not set"
-            exit 1
-          fi
-          
-          echo "✅ All Firebase environment variables are set"
           
           # Process the HTML file
-          if [ -f "Fit_Login.html" ]; then
-            echo "=== Processing Fit_Login.html ==="
+          if [ -f "Login.html" ]; then
+            echo "=== Processing Login.html ==="
             
-            # Use envsubst to replace placeholders
-            # First, create a temporary file with the replacements
-            export FIREBASE_API_KEY_PLACEHOLDER="$FIREBASE_API_KEY"
-            export FIREBASE_AUTH_DOMAIN_PLACEHOLDER="$FIREBASE_AUTH_DOMAIN"
-            export FIREBASE_DATABASE_URL_PLACEHOLDER="$FIREBASE_DATABASE_URL"
-            export FIREBASE_PROJECT_ID_PLACEHOLDER="$FIREBASE_PROJECT_ID"
+            # Create a backup
+            cp Login.html Login.html.backup
             
-            # Replace using sed with environment variables
-            sed -i "s|FIREBASE_API_KEY_PLACEHOLDER|${FIREBASE_API_KEY}|g" Fit_Login.html
-            sed -i "s|FIREBASE_AUTH_DOMAIN_PLACEHOLDER|${FIREBASE_AUTH_DOMAIN}|g" Fit_Login.html
-            sed -i "s|FIREBASE_DATABASE_URL_PLACEHOLDER|${FIREBASE_DATABASE_URL}|g" Fit_Login.html
-            sed -i "s|FIREBASE_PROJECT_ID_PLACEHOLDER|${FIREBASE_PROJECT_ID}|g" Fit_Login.html
+            # Replace placeholders one by one with error checking
+            echo "Replacing FIREBASE_API_KEY_PLACEHOLDER..."
+            sed -i 's|FIREBASE_API_KEY_PLACEHOLDER|${{ secrets.FIREBASE_API_KEY }}|g' Login.html
+            if [ $? -eq 0 ]; then
+              echo "✅ FIREBASE_API_KEY replaced successfully"
+            else
+              echo "❌ Failed to replace FIREBASE_API_KEY"
+              exit 1
+            fi
             
-            # Verify replacements
-            if grep -q "FIREBASE.*PLACEHOLDER" Fit_Login.html; then
+            echo "Replacing FIREBASE_AUTH_DOMAIN_PLACEHOLDER..."
+            sed -i 's|FIREBASE_AUTH_DOMAIN_PLACEHOLDER|${{ secrets.FIREBASE_AUTH_DOMAIN }}|g' Login.html
+            if [ $? -eq 0 ]; then
+              echo "✅ FIREBASE_AUTH_DOMAIN replaced successfully"
+            else
+              echo "❌ Failed to replace FIREBASE_AUTH_DOMAIN"
+              exit 1
+            fi
+            
+            echo "Replacing FIREBASE_DATABASE_URL_PLACEHOLDER..."
+            sed -i 's|FIREBASE_DATABASE_URL_PLACEHOLDER|${{ secrets.FIREBASE_DATABASE_URL }}|g' Login.html
+            if [ $? -eq 0 ]; then
+              echo "✅ FIREBASE_DATABASE_URL replaced successfully"
+            else
+              echo "❌ Failed to replace FIREBASE_DATABASE_URL"
+              exit 1
+            fi
+            
+            echo "Replacing FIREBASE_PROJECT_ID_PLACEHOLDER..."
+            sed -i 's|FIREBASE_PROJECT_ID_PLACEHOLDER|${{ secrets.FIREBASE_PROJECT_ID }}|g' Login.html
+            if [ $? -eq 0 ]; then
+              echo "✅ FIREBASE_PROJECT_ID replaced successfully"
+            else
+              echo "❌ Failed to replace FIREBASE_PROJECT_ID"
+              exit 1
+            fi
+            
+            echo "=== Verification ==="
+            echo "Checking for any remaining placeholders..."
+            if grep -q "FIREBASE.*PLACEHOLDER" Login.html; then
               echo "❌ Some placeholders were not replaced:"
-              grep -n "FIREBASE.*PLACEHOLDER" Fit_Login.html
+              grep -n "FIREBASE.*PLACEHOLDER" Login.html
               exit 1
             else
               echo "✅ All placeholders have been replaced successfully"
             fi
             
+            # Show first few lines of Firebase config for verification (without showing secrets)
+            echo "=== Firebase config section ==="
+            grep -A 10 -B 2 "const firebaseConfig" Login.html | head -15
+            
           else
-            echo "❌ Fit_Login.html file not found!"
-            ls -la
+            echo "❌ Login.html file not found!"
             exit 1
           fi
       
