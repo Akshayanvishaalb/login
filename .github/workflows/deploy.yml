@@ -21,6 +21,11 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
+    env:
+      FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+      FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+      FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,44 +35,60 @@ jobs:
       
       - name: Replace Firebase configuration placeholders
         run: |
-          echo "Current directory contents:"
-          ls -la
+          echo "=== Processing Firebase Configuration ==="
           
-          echo "Looking for HTML files..."
-          find . -name "*.html" -type f
+          # Check if environment variables are set
+          if [ -z "$FIREBASE_API_KEY" ]; then
+            echo "❌ FIREBASE_API_KEY environment variable is not set"
+            exit 1
+          fi
           
-          # Check if HTML files exist and process them
-          HTML_FILES=$(find . -name "*.html" -type f)
-          if [ -n "$HTML_FILES" ]; then
-            echo "Found HTML files to process"
+          if [ -z "$FIREBASE_AUTH_DOMAIN" ]; then
+            echo "❌ FIREBASE_AUTH_DOMAIN environment variable is not set"
+            exit 1
+          fi
+          
+          if [ -z "$FIREBASE_DATABASE_URL" ]; then
+            echo "❌ FIREBASE_DATABASE_URL environment variable is not set"
+            exit 1
+          fi
+          
+          if [ -z "$FIREBASE_PROJECT_ID" ]; then
+            echo "❌ FIREBASE_PROJECT_ID environment variable is not set"
+            exit 1
+          fi
+          
+          echo "✅ All Firebase environment variables are set"
+          
+          # Process the HTML file
+          if [ -f "Fit_Login.html" ]; then
+            echo "=== Processing Fit_Login.html ==="
             
-            # Process each HTML file
-            while IFS= read -r file; do
-              if [ -f "$file" ]; then
-                echo "Processing $file..."
-                
-                # Show current content for debugging (first few lines with Firebase config)
-                echo "Current Firebase config in $file:"
-                grep -n "FIREBASE.*PLACEHOLDER" "$file" || echo "No placeholders found in $file"
-                
-                # Replace placeholders with actual values from GitHub secrets
-                sed -i "s/FIREBASE_API_KEY_PLACEHOLDER/${{ secrets.FIREBASE_API_KEY }}/g" "$file"
-                sed -i "s/FIREBASE_AUTH_DOMAIN_PLACEHOLDER/${{ secrets.FIREBASE_AUTH_DOMAIN }}/g" "$file"
-                sed -i "s/FIREBASE_DATABASE_URL_PLACEHOLDER/${{ secrets.FIREBASE_DATABASE_URL }}/g" "$file"
-                sed -i "s/FIREBASE_PROJECT_ID_PLACEHOLDER/${{ secrets.FIREBASE_PROJECT_ID }}/g" "$file"
-                
-                echo "Completed processing $file"
-                
-                # Verify replacements
-                echo "Checking for remaining placeholders in $file:"
-                grep -n "FIREBASE.*PLACEHOLDER" "$file" || echo "All placeholders replaced in $file"
-              fi
-            done <<< "$HTML_FILES"
+            # Use envsubst to replace placeholders
+            # First, create a temporary file with the replacements
+            export FIREBASE_API_KEY_PLACEHOLDER="$FIREBASE_API_KEY"
+            export FIREBASE_AUTH_DOMAIN_PLACEHOLDER="$FIREBASE_AUTH_DOMAIN"
+            export FIREBASE_DATABASE_URL_PLACEHOLDER="$FIREBASE_DATABASE_URL"
+            export FIREBASE_PROJECT_ID_PLACEHOLDER="$FIREBASE_PROJECT_ID"
+            
+            # Replace using sed with environment variables
+            sed -i "s|FIREBASE_API_KEY_PLACEHOLDER|${FIREBASE_API_KEY}|g" Fit_Login.html
+            sed -i "s|FIREBASE_AUTH_DOMAIN_PLACEHOLDER|${FIREBASE_AUTH_DOMAIN}|g" Fit_Login.html
+            sed -i "s|FIREBASE_DATABASE_URL_PLACEHOLDER|${FIREBASE_DATABASE_URL}|g" Fit_Login.html
+            sed -i "s|FIREBASE_PROJECT_ID_PLACEHOLDER|${FIREBASE_PROJECT_ID}|g" Fit_Login.html
+            
+            # Verify replacements
+            if grep -q "FIREBASE.*PLACEHOLDER" Fit_Login.html; then
+              echo "❌ Some placeholders were not replaced:"
+              grep -n "FIREBASE.*PLACEHOLDER" Fit_Login.html
+              exit 1
+            else
+              echo "✅ All placeholders have been replaced successfully"
+            fi
             
           else
-            echo "No HTML files found"
-            echo "Repository structure:"
-            find . -type f \( -name "*.html" -o -name "*.js" -o -name "*.css" \) | head -10
+            echo "❌ Fit_Login.html file not found!"
+            ls -la
             exit 1
           fi
       
