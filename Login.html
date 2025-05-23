@@ -329,15 +329,7 @@
       databaseURL: "FIREBASE_DATABASE_URL_PLACEHOLDER",
       projectId: "FIREBASE_PROJECT_ID_PLACEHOLDER",
     };
-
-    // Fallback configuration for local development
-    const localConfig = {
-      apiKey: "AIzaSyBv-b3ftdw08O9tf0gSFWeAyEBB0EJvQLo",
-      authDomain: "iot-project-9d263.firebaseapp.com",
-      databaseURL: "https://iot-project-9d263-default-rtdb.firebaseio.com",
-      projectId: "iot-project-9d263",
-    };
-
+    
     // Use production config if placeholders are replaced, otherwise use local config
     const finalConfig = firebaseConfig.apiKey.includes('PLACEHOLDER') ? localConfig : firebaseConfig;
     
