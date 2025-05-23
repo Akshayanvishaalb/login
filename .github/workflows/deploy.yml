@@ -27,12 +27,18 @@ jobs:
 
       - name: Replace Firebase configuration placeholders
         run: |
-          sed -i "s/FIREBASE_API_KEY_PLACEHOLDER/${{ secrets.FIREBASE_API_KEY }}/g" *.html
-          sed -i "s/FIREBASE_AUTH_DOMAIN_PLACEHOLDER/${{ secrets.FIREBASE_AUTH_DOMAIN }}/g" *.html  
-          sed -i "s/FIREBASE_DATABASE_URL_PLACEHOLDER/${{ secrets.FIREBASE_DATABASE_URL }}/g" *.html
-          sed -i "s/FIREBASE_PROJECT_ID_PLACEHOLDER/${{ secrets.FIREBASE_PROJECT_ID }}/g" *.html
+          # Escape secrets to prevent sed errors
+          ESCAPED_API_KEY=$(printf '%s\n' "${{ secrets.FIREBASE_API_KEY }}" | sed 's/[&/\]/\\&/g')
+          ESCAPED_AUTH_DOMAIN=$(printf '%s\n' "${{ secrets.FIREBASE_AUTH_DOMAIN }}" | sed 's/[&/\]/\\&/g')
+          ESCAPED_DATABASE_URL=$(printf '%s\n' "${{ secrets.FIREBASE_DATABASE_URL }}" | sed 's/[&/\]/\\&/g')
+          ESCAPED_PROJECT_ID=$(printf '%s\n' "${{ secrets.FIREBASE_PROJECT_ID }}" | sed 's/[&/\]/\\&/g')
 
-          echo "Configuration replaced successfully"
+          sed -i "s/FIREBASE_API_KEY_PLACEHOLDER/$ESCAPED_API_KEY/g" *.html
+          sed -i "s/FIREBASE_AUTH_DOMAIN_PLACEHOLDER/$ESCAPED_AUTH_DOMAIN/g" *.html  
+          sed -i "s/FIREBASE_DATABASE_URL_PLACEHOLDER/$ESCAPED_DATABASE_URL/g" *.html
+          sed -i "s/FIREBASE_PROJECT_ID_PLACEHOLDER/$ESCAPED_PROJECT_ID/g" *.html
+
+          echo "Secrets replaced successfully"
           grep -n "firebase" *.html || echo "No firebase config found to verify"
 
       - name: Upload artifact
